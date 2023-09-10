@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cancel_payment1" model="ir.cron">
+        <field name="name">facturas de trasnporte</field>
+        <field eval="True" name="active" />
+        <field name="user_id" ref="base.user_root" />
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        
+        <field name="numbercall">-1</field>
+        <field name="model_id" ref="model_transport1" />
+        <field name="state">code</field>
+        <field name="code">model.create_invoices()</field>
+        <!-- <field eval="False" name="doall"/> -->
+        
+
+    </record>
+
+    <record id="action_update_container1" model="ir.actions.server">
+        <field name="name">Crear facturas</field>
+        <field name="type">ir.actions.server</field>
+        <field name="model_id" ref="model_transport1"/>
+        <field name="binding_model_id" ref="model_transport1" />
+        <field name="sequence">1</field>
+        <field name="state">code</field>
+        <field name="code">
+            action = records.create_invoices1()
+        </field> 
+    </record>
+</odoo>

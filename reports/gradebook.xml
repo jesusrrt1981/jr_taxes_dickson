@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <report
+        id="grade_report"
+        model="grade"
+        string="Gradebook notes"
+        report_type="qweb-pdf"
+        name="jr_gradebook.summary"
+        file="jr_gradebook.summary"
+        print_report_name="'Gradebook Notes- {}'.format(object.name)"
+    />
+    <report
+        id="grade_report1"
+        model="grade"
+        string="Grading"
+        report_type="qweb-pdf"
+        name="jr_gradebook.summary1"
+        file="jr_gradebook.summary1"
+        print_report_name="'Gradebook Grading- {}'.format(object.name)"
+    />
+
+    <template id="summary">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="lang" t-value="o.env.user.lang"/>
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        
+                        <div>
+                            <h1 style="color:#34657F">
+                                Report card
+                            </h1>
+                        </div>
+                        <div style="color:#34657F">
+                                ACADEMIC YEAR- <span t-field="o.academic_year"/>
+                            
+                        </div>
+                        <div style="color:#34657F">
+                                Estudiante: <span t-field="o.student_id"/>
+                            
+                        </div>
+                        <div style="color:#34657F">
+                                Curso: <span t-field="o.course"/>
+                            
+                        </div>
+                        <div style="color:#34657F">Fecha:
+                            <span t-esc="o.actual_date()"/>
+                        </div> 
+                        <br />
+                        
+                        <table class="table table-sm" style="text-align:center;font-size: 15px">
+                            <tbody>
+                                <tr>
+                                    
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F;color:white;">Asignatura</th>
+                                    <th style="text-align:center;border: 1px solid #34657F ;background-color: #34657F;color:white">1 term Nota</th>
+                                    <th style="text-align:center;border: 1px solid #34657F ;background-color: #34657F;color:white">2 term Nota</th>
+                                    <th style="text-align:center;border: 1px solid #34657F ;background-color: #34657F;color:white">3 term Nota</th>
+                                    <th style="text-align:center;border: 1px solid #34657F ;background-color: #34657F;color:white">4 term Nota</th>
+                                    <th style="text-align:center;border: 1px solid #34657F ;background-color: #34657F;color:white">Promedio</th>
+                                    <th style="text-align:center;border: 1px solid #34657F ;background-color: #34657F;color:white">Grading</th>
+                                    <th style="text-align:center;border: 1px solid #34657F ;background-color: #34657F;color:white">Recuperacion 1</th>
+                                    <th style="text-align:center;border: 1px solid #34657F ;background-color: #34657F;color:white">Recuperacion 2</th>
+                                </tr>
+                                <tr t-foreach="o.gradebook()" t-as="line">
+                                    
+                                    <t t-if="o.len_field() &gt; 0">
+                                        <t t-if="line[0] != 'Promedio totaL'">
+                                            <td style="border: 1px solid #34657F">
+                                                <span t-esc="line[0].name"/>
+                                            </td>
+                                        </t>
+                                        <t t-else="">
+                                            <td style="border: 1px solid #34657F;background-color:#00A3E0">
+                                                <span t-esc="line[0]"/>
+                                            </td>
+                                        </t>
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[1]"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="o.len_field() &gt; 1 and o.get_date_end()[1]==1">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[3]"/>
+                                        </td>
+                                    </t>
+                                    <t t-else="">
+                                        <td style="border: 1px solid #34657F">No aplica</td>
+                                    </t>
+
+                                    <t t-if="o.len_field() &gt; 2 and o.get_date_end()[2]==1">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[5]"/>
+                                        </td>
+                                    </t>
+                                    <t t-else="">
+                                        <td style="border: 1px solid #34657F">No aplica</td>
+                                    </t>
+                                    <t t-if="o.len_field() &gt; 3 and o.get_date_end()[3]==1">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[7]"/>
+                                        </td>
+                                    </t>
+                                    <t t-else="">
+                                        <td style="border: 1px solid #34657F">No aplica</td>
+                                    </t>
+                                    <t t-if="o.len_field() == 1">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[1]"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="o.len_field() == 2">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[5]"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="o.len_field() == 3">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[7]"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="o.len_field() == 4">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[9]"/>
+                                        </td>
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[12]"/>
+                                        </td>
+                                        <t t-if="o.bolrec1 == True">
+                                            <t t-if="line[10] != -1">
+                                                <td style="border: 1px solid #34657F">
+                                                    <span t-esc="line[10]"/>
+                                                </td>
+                                            </t>
+                                            <t t-else="">
+                                                <td style="border: 1px solid #34657F">No aplica</td>
+                                            </t>
+                                        </t>
+                                        <t t-else="">
+                                                <td style="border: 1px solid #34657F">No aplica</td>
+                                            
+                                        </t>
+                                        <t t-if="o.bolrec2 == True">
+                                            <t t-if="line[11] != -1">
+                                                <td style="border: 1px solid #34657F">
+                                                    <span t-esc="line[11]"/>
+                                                </td>
+                                            </t>
+                                            <t t-else="">
+                                                <td style="border: 1px solid #34657F">No aplica</td>
+                                            </t>
+                                        </t>
+                                        <t t-else="">
+                                                <td style="border: 1px solid #34657F">No aplica</td>
+                                            
+                                        </t>
+                                    </t>
+                                    
+                                </tr>
+                            </tbody>
+                        </table>
+                        <br />
+                      
+                        <br />
+                        <t t-if="o.state=='c'">
+                            <div><strong style="color:#34657F">
+                                Promedio Durante del año regular:<span t-field="o.average_total"/></strong>
+                            </div>
+                            
+                            <br />
+                            <div><strong style="color:#34657F">
+                                Promedio final incluido recuperacion:<span t-field="o.average_total1"/></strong>
+                            </div>
+                            <br />
+                            <div><strong style="color:#34657F">
+                                <span t-field="o.result"/></strong>
+                            </div>
+                        </t>
+                        <br />
+                        <strong style="color:#34657F">Comentarios</strong>
+                        <br />
+                        <span t-field="o.coments" style="color:#34657F"/>
+                        <br />
+                        
+                        <br />
+                        <br />
+                        <div class="row">  
+                            <span style="margin-left:85px">___________________</span>                
+                            <span style="margin-left:220px">________________</span> 
+                        </div>
+                        <div class="row">
+                            <span style="margin-left:120px">Teacher</span>
+                            <span style="margin-left:300px">Principal</span>  
+                        </div>
+                      
+                        <br />
+                       
+                        
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+    <template id="summary1">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="lang" t-value="o.env.user.lang"/>
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        
+                        <div>
+                            <h2>
+                                Report card
+                            </h2>
+                        </div>
+                        <div> 
+                            <strong>
+                                ACADEMIC YEAR: <span t-field="o.academic_year"/>
+                            </strong>
+                        </div>
+                        <div>
+                            <strong>
+                                Estudiante: <span t-field="o.student_id"/>
+                            </strong>
+                        </div>
+                        <div>
+                            <strong>
+                                Curso: <span t-field="o.course"/>
+                            </strong>
+                        </div>
+                        <div><strong>Fecha:
+                            <span t-esc="o.actual_date()"/></strong>
+                        </div> 
+                        <br />
+                        <table class="table table-sm" style="text-align:center;border: 1px solid #34657F">
+                            <tbody>
+                                <tr style="border: 1px solid #34657F">
+                                    
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Asignatura</th>
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Grading 1</th>
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Grading 2</th>
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Grading 3</th>
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Grading 4</th>
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Promedio</th>
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Recuperacion 1</th>
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Recuperacion 2</th>
+                                </tr>
+                                <tr t-foreach="o.gradebook()" t-as="line">
+                                    <t t-if="o.len_field() &gt; 0">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[0].name"/>
+                                        </td>
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[2]"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="o.len_field() &gt; 1 and o.get_date_end()[1]==1">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[4]"/>
+                                        </td>
+                                    </t>
+                                    <t t-else="">
+                                        <td style="border: 1px solid #34657F">No aplica</td>
+                                    </t>
+                                    <t t-if="o.len_field() &gt; 2 and o.get_date_end()[2]==1">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[6]"/>
+                                        </td>
+                                    </t>
+                                    <t t-else="">
+                                        <td style="border: 1px solid #34657F">No aplica</td>
+                                    </t>
+                                    <t t-if="o.len_field() &gt; 3 and o.get_date_end()[3]==1">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[8]"/>
+                                        </td>
+                                    </t>
+                                    <t t-else="">
+                                        <td style="border: 1px solid #34657F">No aplica</td>
+                                    </t>
+                                    <t t-if="o.len_field() == 1">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[2]"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="o.len_field() == 2">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[6]"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="o.len_field() == 3">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[8]"/>
+                                        </td>
+                                    </t>
+                                    <t t-if="o.len_field() == 4">
+                                        <td style="border: 1px solid #34657F">
+                                            <span t-esc="line[12]"/>
+                                        </td>
+                                        <t t-if="o.bolrec1 == True">
+                                            <t t-if="line[10] != -1">
+                                                <td style="border: 1px solid #34657F">
+                                                    <span t-esc="line[13]"/>
+                                                </td>
+                                            </t>
+                                            <t t-else="">
+                                                <td style="border: 1px solid #34657F">No aplica</td>
+                                            </t>
+                                        </t>
+                                        <t t-else="">
+                                                <td style="border: 1px solid #34657F">No aplica</td>
+                                            
+                                        </t>
+                                        <t t-if="o.bolrec2 == True">
+                                            <t t-if="line[11] != -1">
+                                                <td style="border: 1px solid #34657F">
+                                                    <span t-esc="line[14]"/>
+                                                </td>
+                                            </t>
+                                            <t t-else="">
+                                                <td style="border: 1px solid #34657F">No aplica</td>
+                                            </t>
+                                        </t>
+                                        <t t-else="">
+                                                <td style="border: 1px solid #34657F">No aplica</td>
+                                            
+                                        </t>
+                                    </t>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <br />
+                        <h2>Promedio por parciales</h2>
+                        <table class="table table-sm" style="text-align:center;">
+                            <tbody>
+                                <tr style="border: 1px solid #34657F">
+                                    
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Parcial</th>
+                                    <th style="text-align:center;border: 1px solid #34657F;background-color: #34657F">Promedio</th>
+                                </tr>
+                                <tr t-foreach="o.gradebook_promedio()" t-as="line1">
+                                    
+                                    <td style="border: 1px solid #34657F">
+                                        <span t-esc="line1[0].name"/>
+                                    </td>
+                                    <td style="border: 1px solid #34657F">
+                                        <span t-esc="line1[2]"/>
+                                    </td> 
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        
+                        <br />
+                        <div><strong>
+                            Promedio Durante del año regular:<span t-field="o.average_total"/></strong>
+                        </div>
+                        
+                        <br />
+                        <div><strong>
+                            Promedio final incluido recuperacion:<span t-field="o.average_total1"/></strong>
+                        </div>
+                        <br />
+                        <div><strong>
+                            <span t-field="o.result"/></strong>
+                        </div>
+                        <br />
+                        <br />
+                        <div class="row">
+                            <div>
+                                <span style="margin-left:65px">___________________</span>                
+                                <span style="margin-left:350px">________________</span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div>
+                                <span style="margin-left:100px">Teacher</span>
+                                
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div>
+                                                          
+                                <span style="margin-left:408px">Principal</span>
+                            </div>
+                        </div>
+                        <br />
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
