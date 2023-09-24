@@ -2,6 +2,11 @@
 from odoo import models, api, fields, exceptions, _
 from datetime import date, datetime, time
 from odoo.exceptions import UserError
+import xlwt
+from xlwt import easyxf
+from io import StringIO, BytesIO
+import io
+import base64
 
 
 
@@ -19,6 +24,8 @@ class AnalisysReport(models.Model):
     resultado=fields.Float(string="Resultado",compute="get_resultado")
     taxes_ids=fields.One2many("taxes.line","analisys_id")
     test=fields.Text()
+    excel_file=fields.Binary(string="Excel")
+    file_name = fields.Char('Excel File')
 
     def action_confirm(self):
         self.state="c"
@@ -97,7 +104,7 @@ class AnalisysReport(models.Model):
             'compra_tax':0,
         }) 
 
-        self.test=str(obj1)+ str(excomp)+ str(exvent)
+        
         
         vals2=[]        
         for x in vals:
@@ -106,6 +113,7 @@ class AnalisysReport(models.Model):
 
         for i in vals:
             self.taxes_ids=[(0,0,i)]
+        self.export_stock_ledger()
 
     def get_resultado(self):
         
@@ -118,7 +126,231 @@ class AnalisysReport(models.Model):
             else:
                 record.resultado=0
 
-    
+    def export_stock_ledger(self):
+        workbook = xlwt.Workbook()
+        filename = 'Taxes.xls'
+        # Style
+        main_header_style = easyxf('font:height 400;pattern: pattern solid, fore_color gray25;'
+                                'align: horiz center;font: color black; font:bold True;'
+                                "borders: top thin,left thin,right thin,bottom thin")
+
+        header_style = easyxf('font:height 200;pattern: pattern solid, fore_color gray25;'
+                            'align: horiz center;font: color black; font:bold True;'
+                            "borders: top thin,left thin,right thin,bottom thin")
+
+        group_style = easyxf('font:height 200;pattern: pattern solid, fore_color gray25;'
+                            'align: horiz left;font: color black; font:bold True;'
+                            "borders: top thin,left thin,right thin,bottom thin")
+
+        text_left = easyxf('font:height 150; align: horiz left;' "borders: top thin,bottom thin")
+        text_right_bold = easyxf('font:height 200; align: horiz right;font:bold True;' "borders: top thin,bottom thin")
+        text_right_bold1 = easyxf('font:height 200; align: horiz right;font:bold True;' "borders: top thin,bottom thin", num_format_str='0.00')
+        text_center = easyxf('font:height 150; align: horiz center;' "borders: top thin,bottom thin")
+        text_right = easyxf('font:height 150; align: horiz right;' "borders: top thin,bottom thin",
+                            num_format_str='0.00')
+
+        worksheet = []
+        
+        worksheet.append(1)
+        work=0
+        worksheet[work] = workbook.add_sheet("Taxes")
+        
+        for i in range(0, 12):
+            worksheet[work].col(i).width = 140 * 30
+
+        worksheet[work].write_merge(0, 1, 0, 9, 'REPORTE IMPUESTOS', main_header_style)
+        worksheet[work].write_merge(2, 3, 0, 9, 'DICKSON', main_header_style)
+      
+        worksheet[work].write(5, 2, 'Fecha Inicio', header_style)
+        worksheet[work].write(5, 4, 'Fecha Fin', header_style)
+        worksheet[work].write(5, 3, str(self.start_date), text_center)
+        worksheet[work].write(5, 5, str(self.end_date), text_center)
+
+        obj=self.env["account.move.line"].search([
+            ("move_id.invoice_date",">=",self.start_date),
+            ("move_id.invoice_date","<=",self.end_date),
+            ("move_id.state","=","posted"),
+            ("move_id.move_type","in",["out_invoice","in_invoice"]),
+            ("tax_line_id","=",False),
+            ("tax_ids", "!=",False),
+            ("price_total", ">",0)
+        ])
+
+        obj1=self.env["account.move.line"].search([
+            ("move_id.invoice_date",">=",self.start_date),
+            ("move_id.invoice_date","<=",self.end_date),
+            ("move_id.state","=","posted"),
+            ("move_id.move_type","in",["out_invoice","in_invoice"]),
+            ("tax_ids", "=", False),
+            ("tax_line_id","=",False),
+            ("price_total", ">",0)
+        ])
+        self.test=str(obj)+ "----"+str(obj1)
+        header=obj.mapped("tax_ids.name")
+
+        u_header=[]
+        tags = ['Factura', 'Fecha','Monto de linea']
+        for record in header:
+            if record not in u_header:
+                u_header.append(record)
+                tags.append(record)
+        
+        tags.append("Excento")
+        r= 6
+        
+        c = 1
+        for tag in tags:
+            worksheet[work].write(r, c, tag, header_style)
+            c+=1
+        
+
+        
+        
+        r=7
+        worksheet[work].write(r, 1, "Facturas de Venta", header_style)
+        r=8
+
+        
+        for line in obj.filtered(lambda x:x.move_id.move_type=="out_invoice"):
+            if not line.tax_line_id:
+            
+                c=1
+                worksheet[work].write(r, c, line.move_id.name, text_left)
+                c+=1
+                worksheet[work].write(r,c,str(line.move_id.invoice_date), text_left)
+                c += 1
+                worksheet[work].write(r,c,line.price_total, text_left)
+                
+                if len(line.tax_ids)>1:
+                    for tax in line.tax_ids:
+                        for head in tags:
+                            if tax.name==head:
+
+                                worksheet[work].write(r, tags.index(head)+1, line.price_subtotal*tax.amount/100, text_right)
+                    r+=1
+                else:
+                    for head in tags:
+                        if line.tax_ids.name==head:
+
+                            worksheet[work].write(r, tags.index(line.tax_ids.name)+1, line.price_subtotal*line.tax_ids.amount/100, text_right)
+                    r+=1
+        
+           
+        for line2 in obj1.filtered(lambda x:x.move_id.move_type=="out_invoice"):
+            if not line2.tax_line_id:
+
+            
+                c=1
+                worksheet[work].write(r, c, line2.move_id.name, text_left)
+                c+=1
+                worksheet[work].write(r,c,str(line2.move_id.invoice_date), text_left)
+                c += 1
+                worksheet[work].write(r,c,line2.price_total, text_left)
+                c+=1
+                worksheet[work].write(r, tags.index("Excento")+1, 0, text_right)
+                r+=1
+        
+        worksheet[work].write(r, 1, "Facturas de Compra", header_style)
+        r+=1
+        for line3 in obj.filtered(lambda x:x.move_id.move_type=="in_invoice"):
+            if not line3.tax_line_id:
+            
+                c=1
+                worksheet[work].write(r, c, line3.move_id.name, text_left)
+                c+=1
+                worksheet[work].write(r,c,str(line3.move_id.invoice_date), text_left)
+                c += 1
+                worksheet[work].write(r,c,line3.price_total, text_left)
+                c += 1
+                if len(line.tax_ids)>1:
+                    for tax in line.tax_ids:
+                        for head in tags:
+                            if tax.name==head:
+
+                                worksheet[work].write(r, tags.index(head)+1, line3.price_subtotal*tax.amount/100, text_right)
+                    r+=1
+                else:
+                    for head in tags:
+                        if line.tax_ids.name==head:
+
+                            worksheet[work].write(r, tags.index(head)+1, line3.price_subtotal*line.tax_ids.amount/100, text_right)
+                    r+=1
+        
+           
+        for line4 in obj1.filtered(lambda x:x.move_id.move_type=="in_invoice"):
+            if not line4.tax_line_id:
+
+            
+                c=1
+                worksheet[work].write(r, c, line4.move_id.name, text_left)
+                c+=1
+                worksheet[work].write(r,c,str(line4.move_id.invoice_date), text_left)
+                c += 1
+                worksheet[work].write(r,c,line4.price_total, text_left)
+                
+                worksheet[work].write(r, tags.index("Excento")+1, 0, text_right)
+                r+=1
+
+        r+=2
+        worksheet[work].write_merge(r, r+1, 1, 2, 'TOTAL', main_header_style)
+        r+=2
+        head2=["Impuesto","Venta Neta","Impuesto de Venta","Compra neta","Impuesto de compra","Diferencia"]
+        
+        c=1
+        for head1 in head2:
+            worksheet[work].write(r, c, head1, header_style)
+            c+=1
+        r+=1
+
+        for total in self.taxes_ids:
+            if total.tax_id:
+                tax_n=self.env["account.tax"].browse(total.tax_id.id)
+                c=1
+                worksheet[work].write(r, c, tax_n.name, text_left)
+                c+=1
+                worksheet[work].write(r, c, total.venta_net, text_left)
+                c+=1
+                worksheet[work].write(r, c, total.venta_tax, text_left)
+                c+=1
+                worksheet[work].write(r, c, total.compra_net, text_left)
+                c+=1
+                worksheet[work].write(r, c, total.compra_tax, text_left)
+                c+=1
+                worksheet[work].write(r, c, total.dif, text_left)
+                c+=1
+
+                r+=1
+            else:
+                
+                c=1
+                worksheet[work].write(r, c, "Excento", text_left)
+                c+=1
+                worksheet[work].write(r, c, total.venta_net, text_left)
+                c+=1
+                worksheet[work].write(r, c, total.venta_tax, text_left)
+                c+=1
+                worksheet[work].write(r, c, total.compra_net, text_left)
+                c+=1
+                worksheet[work].write(r, c, total.compra_tax, text_left)
+                c+=1
+                worksheet[work].write(r, c, total.dif, text_left)
+                c+=1
+
+                r+=1
+
+
+
+
+        
+
+        fp = io.BytesIO()
+        workbook.save(fp)
+        export_id = self.write(
+            {'excel_file': base64.encodestring(fp.getvalue()), 'file_name': filename})
+        fp.close()
+
+        
+
 class TaxesLine(models.Model):
     _name="taxes.line"
 

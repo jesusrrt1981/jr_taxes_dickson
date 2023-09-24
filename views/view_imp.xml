@@ -20,6 +20,8 @@
                         <field name="name" attrs="{'readonly': [('state', '!=','d')]}"/>
                         <field name="start_date" attrs="{'readonly': [('state', '!=','d')]}"/> 
                         <field name="end_date" attrs="{'readonly': [('state', '!=','d')]}"/>
+                        <field name="excel_file" readonly="1" filename="file_name"/>
+                        <field name="file_name" invisible="1"/>
                         
                     </group>
                     <h2>Detalle</h2>
