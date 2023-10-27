@@ -166,38 +166,53 @@ class AnalisysReport(models.Model):
         worksheet[work].write(5, 3, str(self.start_date), text_center)
         worksheet[work].write(5, 5, str(self.end_date), text_center)
 
-        obj=self.env["account.move.line"].search([
-            ("move_id.invoice_date",">=",self.start_date),
-            ("move_id.invoice_date","<=",self.end_date),
-            ("move_id.state","=","posted"),
-            ("move_id.move_type","in",["out_invoice","in_invoice"]),
-            ("tax_line_id","=",False),
-            ("tax_ids", "!=",False),
-            ("price_total", ">",0)
+        obj=self.env["account.move"].search([
+            ("invoice_date",">=",self.start_date),
+            ("invoice_date","<=",self.end_date),
+            ("state","=","posted"),
+            ("move_type","=","in_invoice"),
+            #("tax_line_id","=",False),
+            #("tax_ids", "!=",False),
+            #("price_total", ">",0)
         ])
 
-        obj1=self.env["account.move.line"].search([
-            ("move_id.invoice_date",">=",self.start_date),
-            ("move_id.invoice_date","<=",self.end_date),
-            ("move_id.state","=","posted"),
-            ("move_id.move_type","in",["out_invoice","in_invoice"]),
-            ("tax_ids", "=", False),
-            ("tax_line_id","=",False),
-            ("price_total", ">",0)
+        obj1=self.env["account.move"].search([
+            ("invoice_date",">=",self.start_date),
+            ("invoice_date","<=",self.end_date),
+            ("state","=","posted"),
+            ("move_type","=","out_invoice"),
+            #("tax_ids", "=", False),
+            #("tax_line_id","=",False),
+            #("price_total", ">",0)
         ])
-        self.test=str(obj)+ "----"+str(obj1)
-        header=obj.mapped("tax_ids.name")
+        tags=["Fecha","Cliente","Factura","Ventas Gravadas"]
+        tags1=["Fecha","Cliente","Factura","Compras Gravadas"]
+        venta_imp_tax=obj1.mapped("invoice_line_ids.tax_ids.name")
+        compras_imp_tax=obj.mapped("invoice_line_ids.tax_ids.name")
+        imp_ventas=[]
+        imp_compras=[]
+        for i in venta_imp_tax:
+            if i not in imp_ventas and i != False:
+                imp_ventas.append(i)
+        for j in imp_ventas:
+            tags.append(j)
+        tags.append("Sin impuesto")
+        tags.append("Total Factura")
 
-        u_header=[]
-        tags = ['Factura', 'Fecha','Monto de linea']
-        for record in header:
-            if record not in u_header:
-                u_header.append(record)
-                tags.append(record)
+        for i in compras_imp_tax:
+            if i not in imp_compras and i != False:
+                imp_compras.append(i)
+        for j in imp_compras:
+            tags1.append(j)
+        tags1.append("Sin impuesto")
+        tags1.append("Total Factura")
         
-        tags.append("Excento")
-        r= 6
+
+       
+
         
+        r= 8
+        worksheet[work].write_merge(7, 7, 0, 9, 'VENTAS', main_header_style)
         c = 1
         for tag in tags:
             worksheet[work].write(r, c, tag, header_style)
@@ -206,141 +221,104 @@ class AnalisysReport(models.Model):
 
         
         
-        r=7
-        worksheet[work].write(r, 1, "Facturas de Venta", header_style)
-        r=8
-
         
-        for line in obj.filtered(lambda x:x.move_id.move_type=="out_invoice"):
-            if not line.tax_line_id:
-            
-                c=1
-                worksheet[work].write(r, c, line.move_id.name, text_left)
-                c+=1
-                worksheet[work].write(r,c,str(line.move_id.invoice_date), text_left)
-                c += 1
-                worksheet[work].write(r,c,line.price_total, text_left)
-                
-                if len(line.tax_ids)>1:
-                    for tax in line.tax_ids:
-                        for head in tags:
-                            if tax.name==head:
 
-                                worksheet[work].write(r, tags.index(head)+1, line.price_subtotal*tax.amount/100, text_right)
-                    r+=1
-                else:
-                    for head in tags:
-                        if line.tax_ids.name==head:
-
-                            worksheet[work].write(r, tags.index(line.tax_ids.name)+1, line.price_subtotal*line.tax_ids.amount/100, text_right)
-                    r+=1
-        
-           
-        for line2 in obj1.filtered(lambda x:x.move_id.move_type=="out_invoice"):
-            if not line2.tax_line_id:
-
-            
-                c=1
-                worksheet[work].write(r, c, line2.move_id.name, text_left)
-                c+=1
-                worksheet[work].write(r,c,str(line2.move_id.invoice_date), text_left)
-                c += 1
-                worksheet[work].write(r,c,line2.price_total, text_left)
-                c+=1
-                worksheet[work].write(r, tags.index("Excento")+1, 0, text_right)
-                r+=1
-        
-        worksheet[work].write(r, 1, "Facturas de Compra", header_style)
         r+=1
-        for line3 in obj.filtered(lambda x:x.move_id.move_type=="in_invoice"):
-            if not line3.tax_line_id:
+        for line in obj1:
             
-                c=1
-                worksheet[work].write(r, c, line3.move_id.name, text_left)
-                c+=1
-                worksheet[work].write(r,c,str(line3.move_id.invoice_date), text_left)
-                c += 1
-                worksheet[work].write(r,c,line3.price_total, text_left)
-                c += 1
-                if len(line.tax_ids)>1:
-                    for tax in line.tax_ids:
+            
+            c=1
+            worksheet[work].write(r, c, str(line.invoice_date), text_left)
+            c+=1
+            worksheet[work].write(r,c,line.partner_id.name, text_left)
+          
+            c += 1
+            worksheet[work].write(r,c,line.name, text_left)
+            c += 1
+            worksheet[work].write(r,c,line.amount_untaxed, text_left)
+            impu={}
+            for inv in line.invoice_line_ids:
+                if not inv.tax_line_id:
+                    if len(inv.tax_ids)>1:
+                        for tax in inv.tax_ids:
+                            for head in tags:
+                                if tax.name==head:
+                                    if head not in impu:
+                                        impu.update({head:inv.price_subtotal*tax.amount/100})
+                                    else:
+                                        impu[head]+=inv.price_subtotal*tax.amount/100
+                        for heade in tags:
+                            if heade in impu:
+                                worksheet[work].write(r, tags.index(heade)+1,impu.get("heade"),  text_right)
+                        
+                    elif len(inv.tax_ids)==1:
                         for head in tags:
-                            if tax.name==head:
+                            if inv.tax_ids.name==head:
+                                if head not in impu:
+                                        impu.update({head:inv.price_subtotal*inv.tax_ids.amount/100})
+                                else:
+                                    impu[head]+=inv.price_subtotal*inv.tax_ids.amount/100
 
-                                worksheet[work].write(r, tags.index(head)+1, line3.price_subtotal*tax.amount/100, text_right)
-                    r+=1
-                else:
-                    for head in tags:
-                        if line.tax_ids.name==head:
+            for heade in tags:
+                        if heade in impu:
+                            worksheet[work].write(r, tags.index(heade)+1,impu.get("heade"),  text_right)
+                        elif heade =="sin impuesto":
+                            worksheet[work].write(r, tags.index(heade)+1,0,  text_right)
 
-                            worksheet[work].write(r, tags.index(head)+1, line3.price_subtotal*line.tax_ids.amount/100, text_right)
-                    r+=1
-        
-           
-        for line4 in obj1.filtered(lambda x:x.move_id.move_type=="in_invoice"):
-            if not line4.tax_line_id:
+            worksheet[work].write(r, len(tags),line.amount_total,  text_right)
+            r+=1
 
-            
-                c=1
-                worksheet[work].write(r, c, line4.move_id.name, text_left)
-                c+=1
-                worksheet[work].write(r,c,str(line4.move_id.invoice_date), text_left)
-                c += 1
-                worksheet[work].write(r,c,line4.price_total, text_left)
-                
-                worksheet[work].write(r, tags.index("Excento")+1, 0, text_right)
-                r+=1
+        worksheet[work].write_merge(r+2, r+2, 0, 9, 'COMPRAS', main_header_style)
 
-        r+=2
-        worksheet[work].write_merge(r, r+1, 1, 2, 'TOTAL', main_header_style)
-        r+=2
-        head2=["Impuesto","Venta Neta","Impuesto de Venta","Compra neta","Impuesto de compra","Diferencia"]
-        
-        c=1
-        for head1 in head2:
-            worksheet[work].write(r, c, head1, header_style)
+        r+=3
+
+        for tag3 in tags1:
+            worksheet[work].write(r, c, tag3, header_style)
             c+=1
         r+=1
+        for line in obj:
+            
+            
+            c=1
+            worksheet[work].write(r, c, str(line.invoice_date), text_left)
+            c+=1
+            worksheet[work].write(r,c,line.partner_id.name, text_left)
+         
+            c += 1
+            worksheet[work].write(r,c,line.name, text_left)
+            c += 1
+            worksheet[work].write(r,c,line.amount_untaxed, text_left)
+            impu1={}
+            for inv in line.invoice_line_ids:
+                if not inv.tax_line_id:
+                    if len(inv.tax_ids)>1:
+                        for tax in inv.tax_ids:
+                            for head in tags1:
+                                if tax.name==head:
+                                    if head not in impu1:
+                                        impu.update({head:inv.price_subtotal*tax.amount/100})
+                                    else:
+                                        impu1[head]+=inv.price_subtotal*tax.amount/100
+                        for heade in tags1:
+                            if heade in impu1:
+                                worksheet[work].write(r, tags1.index(heade)+1,impu1.get("heade"),  text_right)
+                        
+                    elif len(inv.tax_ids)==1:
+                        for head in tags1:
+                            if inv.tax_ids.name==head:
+                                if head not in impu1:
+                                        impu1.update({head:inv.price_subtotal*inv.tax_ids.amount/100})
+                                else:
+                                    impu1[head]+=inv.price_subtotal*inv.tax_ids.amount/100
 
-        for total in self.taxes_ids:
-            if total.tax_id:
-                tax_n=self.env["account.tax"].browse(total.tax_id.id)
-                c=1
-                worksheet[work].write(r, c, tax_n.name, text_left)
-                c+=1
-                worksheet[work].write(r, c, total.venta_net, text_left)
-                c+=1
-                worksheet[work].write(r, c, total.venta_tax, text_left)
-                c+=1
-                worksheet[work].write(r, c, total.compra_net, text_left)
-                c+=1
-                worksheet[work].write(r, c, total.compra_tax, text_left)
-                c+=1
-                worksheet[work].write(r, c, total.dif, text_left)
-                c+=1
+                for heade in tags1:
+                            if heade in impu1:
+                                worksheet[work].write(r, tags1.index(heade)+1,impu1.get("heade"),  text_right)
+                            elif heade =="sin impuesto":
+                                worksheet[work].write(r, tags1.index(heade)+1,0,  text_right)
 
+                worksheet[work].write(r, len(tags1),line.amount_total,  text_right)
                 r+=1
-            else:
-                
-                c=1
-                worksheet[work].write(r, c, "Excento", text_left)
-                c+=1
-                worksheet[work].write(r, c, total.venta_net, text_left)
-                c+=1
-                worksheet[work].write(r, c, total.venta_tax, text_left)
-                c+=1
-                worksheet[work].write(r, c, total.compra_net, text_left)
-                c+=1
-                worksheet[work].write(r, c, total.compra_tax, text_left)
-                c+=1
-                worksheet[work].write(r, c, total.dif, text_left)
-                c+=1
-
-                r+=1
-
-
-
-
         
 
         fp = io.BytesIO()
