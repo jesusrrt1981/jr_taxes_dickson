@@ -8,6 +8,10 @@ from io import StringIO, BytesIO
 import io
 import base64
 
+import logging
+
+_logger = logging.getLogger(__name__)
+
 
 
 
@@ -212,7 +216,7 @@ class AnalisysReport(models.Model):
 
         
         r= 8
-        worksheet[work].write_merge(7, 7, 0, 9, 'VENTAS', main_header_style)
+        worksheet[work].write_merge(7, 7, 0, 9, 'VENTAS', header_style)
         c = 1
         for tag in tags:
             worksheet[work].write(r, c, tag, header_style)
@@ -258,20 +262,22 @@ class AnalisysReport(models.Model):
                                         impu.update({head:inv.price_subtotal*inv.tax_ids.amount/100})
                                 else:
                                     impu[head]+=inv.price_subtotal*inv.tax_ids.amount/100
-
+                _logger.info('impuuuu'+str(impu))
             for heade in tags:
+                        _logger.info('headdd'+str(heade))
                         if heade in impu:
-                            worksheet[work].write(r, tags.index(heade)+1,impu.get("heade"),  text_right)
-                        elif heade =="sin impuesto":
+                            worksheet[work].write(r, tags.index(heade)+1,impu.get(heade),  text_right)
+                        elif heade =="Sin impuesto":
                             worksheet[work].write(r, tags.index(heade)+1,0,  text_right)
-
+            
+            
             worksheet[work].write(r, len(tags),line.amount_total,  text_right)
             r+=1
 
-        worksheet[work].write_merge(r+2, r+2, 0, 9, 'COMPRAS', main_header_style)
+        worksheet[work].write_merge(r+2, r+2, 0, 9, 'COMPRAS', header_style)
 
         r+=3
-
+        c=1
         for tag3 in tags1:
             worksheet[work].write(r, c, tag3, header_style)
             c+=1
@@ -301,7 +307,7 @@ class AnalisysReport(models.Model):
                                         impu1[head]+=inv.price_subtotal*tax.amount/100
                         for heade in tags1:
                             if heade in impu1:
-                                worksheet[work].write(r, tags1.index(heade)+1,impu1.get("heade"),  text_right)
+                                worksheet[work].write(r, tags1.index(heade)+1,impu1.get(heade),  text_right)
                         
                     elif len(inv.tax_ids)==1:
                         for head in tags1:
@@ -313,8 +319,8 @@ class AnalisysReport(models.Model):
 
                 for heade in tags1:
                             if heade in impu1:
-                                worksheet[work].write(r, tags1.index(heade)+1,impu1.get("heade"),  text_right)
-                            elif heade =="sin impuesto":
+                                worksheet[work].write(r, tags1.index(heade)+1,impu1.get(heade),  text_right)
+                            elif heade =="Sin impuesto":
                                 worksheet[work].write(r, tags1.index(heade)+1,0,  text_right)
 
                 worksheet[work].write(r, len(tags1),line.amount_total,  text_right)
