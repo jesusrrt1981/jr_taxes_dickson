@@ -228,6 +228,9 @@ class AnalisysReport(models.Model):
         
 
         r+=1
+        excenta=[]
+        imput=[]
+        vgravada=[]
         for line in obj1:
             
             
@@ -251,17 +254,28 @@ class AnalisysReport(models.Model):
                                         impu.update({head:inv.price_subtotal*tax.amount/100})
                                     else:
                                         impu[head]+=inv.price_subtotal*tax.amount/100
+                        vgravada.append(inv.price_subtotal)
                         for heade in tags:
                             if heade in impu:
                                 worksheet[work].write(r, tags.index(heade)+1,impu.get("heade"),  text_right)
                         
                     elif len(inv.tax_ids)==1:
+                        vgravada.append(inv.price_subtotal)
                         for head in tags:
                             if inv.tax_ids.name==head:
                                 if head not in impu:
                                         impu.update({head:inv.price_subtotal*inv.tax_ids.amount/100})
                                 else:
                                     impu[head]+=inv.price_subtotal*inv.tax_ids.amount/100
+                    else:
+                        excenta.append(inv.price_subtotal)
+
+            for x in impu.values():
+                if x:
+                    imput.append(x)
+
+            
+                    
                 _logger.info('impuuuu'+str(impu))
             for heade in tags:
                         _logger.info('headdd'+str(heade))
@@ -282,6 +296,9 @@ class AnalisysReport(models.Model):
             worksheet[work].write(r, c, tag3, header_style)
             c+=1
         r+=1
+        cexcenta=[]
+        cimput=[]
+        cgravada=[]
         for line in obj:
             
             
@@ -305,18 +322,22 @@ class AnalisysReport(models.Model):
                                         impu.update({head:inv.price_subtotal*tax.amount/100})
                                     else:
                                         impu1[head]+=inv.price_subtotal*tax.amount/100
+                        cgravada.append(inv.price_subtotal)
                         for heade in tags1:
                             if heade in impu1:
                                 worksheet[work].write(r, tags1.index(heade)+1,impu1.get(heade),  text_right)
                         
                     elif len(inv.tax_ids)==1:
+                        cgravada.append(inv.price_subtotal)
                         for head in tags1:
                             if inv.tax_ids.name==head:
                                 if head not in impu1:
                                         impu1.update({head:inv.price_subtotal*inv.tax_ids.amount/100})
                                 else:
                                     impu1[head]+=inv.price_subtotal*inv.tax_ids.amount/100
-
+                    else:
+                        cexcenta.append(inv.price_subtotal)
+                    
                 for heade in tags1:
                             if heade in impu1:
                                 worksheet[work].write(r, tags1.index(heade)+1,impu1.get(heade),  text_right)
@@ -325,7 +346,35 @@ class AnalisysReport(models.Model):
 
                 worksheet[work].write(r, len(tags1),line.amount_total,  text_right)
                 r+=1
+                for x in impu1.values():
+                            if x:
+                                cimput.append(x)
         
+        r+=3
+        worksheet[work].write_merge(r+2, r+2, 0, 9, 'TOTALES', header_style)
+        worksheet[work].write(r+3, 1,"Ventas Gravadas",  text_right)
+        worksheet[work].write(r+3, 2,sum(vgravada),  text_right)
+        worksheet[work].write(r+4, 1,"Impo sobre ventas",  text_right)
+        worksheet[work].write(r+4, 3,sum(imput),  text_right)
+        worksheet[work].write(r+5, 1,"Ventas Excentas",  text_right)
+        worksheet[work].write(r+5, 2,sum(excenta),  text_right)
+        worksheet[work].write(r+6, 1,"Total de ventas",  text_right)
+        worksheet[work].write(r+6, 2,sum(excenta)+sum(vgravada),  text_right)
+        
+        worksheet[work].write(r+8, 1,"Compras Gravadas",  text_right)
+        worksheet[work].write(r+8, 2,sum(cgravada),  text_right)
+        worksheet[work].write(r+9, 1,"Impo sobre compras",  text_right)
+        worksheet[work].write(r+9, 3,sum(cimput),  text_right)
+        worksheet[work].write(r+10, 1,"Compras excentas",  text_right)
+        worksheet[work].write(r+10, 2,sum(cexcenta),  text_right)
+        worksheet[work].write(r+11, 1,"Total de compras",  text_right)
+        worksheet[work].write(r+11, 2,sum(cexcenta)+sum(cgravada),  text_right)
+        r+=12
+        worksheet[work].write(r+13, 1,"Saldo del fisco",  text_right)
+        worksheet[work].write(r+13, 2,sum(imput)-sum(cimput),  text_right)
+
+
+
 
         fp = io.BytesIO()
         workbook.save(fp)
