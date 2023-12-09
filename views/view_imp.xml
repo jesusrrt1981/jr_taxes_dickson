@@ -24,22 +24,30 @@
                         <field name="file_name" invisible="1"/>
                         
                     </group>
-                    <h2>Detalle</h2>
-                    <field name="taxes_ids" attrs="{'readonly': [('state', '!=','d')]}">
+                    <h2>Detalle Ventas</h2>
+                    <field name="taxes_ids1" attrs="{'readonly': [('state', '!=','d')]}">
                         <tree editable="bottom">
                             <field name="tax_id"/>
                             <field name="venta_net"/>
                             <field name="venta_tax"/>
+                            
+                        </tree>
+                    </field>
+                    <h2>Detalle Compras</h2>
+                    <field name="taxes_ids" attrs="{'readonly': [('state', '!=','d')]}">
+                        <tree editable="bottom" >
+                            <field name="tax_id"/>
+                           
                             <field name="compra_net"/>
                             <field name="compra_tax"/>
-                            <field name="dif"/>
+                            
                         </tree>
                     </field>
                    
                     <h2>Resultado</h2>
                     <group colspan="4" col="4">
-                        <field style="color:red" name="resultado" attrs="{'invisible': [('resultado', '&lt;=', 0)]}"/>
-                        <field style="color:blue" name="resultado" attrs="{'invisible': [('resultado', '&gt;', 0)]}"/>
+                        <field style="color:blue" name="dif" attrs="{'invisible': [('dif', '&lt;=', 0)]}"/>
+                        <field style="color:red" name="dif" attrs="{'invisible': [('dif', '&gt;', 0)]}"/>
                     </group>
                   
                 </sheet>
@@ -54,7 +62,7 @@
                 <field name="name"/>   
                 <field name="start_date"/>
                 <field name="end_date"/>
-                <field name="resultado"/>
+                <field name="dif"/>
                 <field name="state"/>
             </tree>  
         </field>

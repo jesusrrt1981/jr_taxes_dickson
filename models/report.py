@@ -27,9 +27,11 @@ class AnalisysReport(models.Model):
     end_date=fields.Datetime(string="Fecha Fin")
     resultado=fields.Float(string="Resultado",compute="get_resultado")
     taxes_ids=fields.One2many("taxes.line","analisys_id")
+    taxes_ids1=fields.One2many("taxes.line1","analisys_id1")
     test=fields.Text()
     excel_file=fields.Binary(string="Excel")
     file_name = fields.Char('Excel File')
+    dif=fields.Float(string="Dif impuesto")
 
     def action_confirm(self):
         self.state="c"
@@ -42,6 +44,9 @@ class AnalisysReport(models.Model):
     def compute_one2many(self):
         if len(self.taxes_ids)>0:
             for line in self.taxes_ids:
+                line.unlink()
+        if len(self.taxes_ids1)>0:
+            for line in self.taxes_ids1:
                 line.unlink()
         obj=self.env["account.move.line"].search([
             ("move_id.invoice_date",">=",self.start_date),
@@ -58,6 +63,7 @@ class AnalisysReport(models.Model):
             ("tax_ids", "=", False)
         ])
         vals=[]
+        vals1=[]
         tax=obj.mapped("tax_ids")
 
         u_tax=[]
@@ -81,16 +87,27 @@ class AnalisysReport(models.Model):
                 if line.id in record.tax_ids.ids:
                     compra_net.append(record.price_subtotal)
                     compra_imp.append(record.price_subtotal*line.amount/100)
-            
-            vals.append({
-                        'analisys_id':self.id,
-                        'tax_id':line.id,
-                        'venta_net':sum(venta_net),
-                        'venta_tax':sum(venta_imp),
-                        'compra_net':sum(compra_net),
-                        'compra_tax':sum(compra_imp),
+            if sum(venta_net)==0:
+                vals.append({
+                            'analisys_id':self.id,
+                            'tax_id':line.id,
+                            'venta_net':sum(venta_net),
+                            'venta_tax':sum(venta_imp),
+                            'compra_net':sum(compra_net),
+                            'compra_tax':sum(compra_imp),
 
-                        })
+                            })
+            if sum(compra_net)==0:
+
+                vals1.append({
+                            'analisys_id1':self.id,
+                            'tax_id':line.id,
+                            'venta_net':sum(venta_net),
+                            'venta_tax':sum(venta_imp),
+                            'compra_net':sum(compra_net),
+                            'compra_tax':sum(compra_imp),
+
+                            })
         excomp=[]
         exvent=[]
         for line1 in obj1:
@@ -99,24 +116,46 @@ class AnalisysReport(models.Model):
             elif line1.move_id.move_type=="in_invoice" and line1.price_total>0 and not line1.tax_line_id:# and line1.price_subtotal==line1.price_total:
                 excomp.append(line1.price_total)
         
-        vals.append({
-            'analisys_id':self.id,
-            'tax_id':False,
-            'venta_net':sum(exvent),
-            'venta_tax':0,
-            'compra_net':sum(excomp),
-            'compra_tax':0,
-        }) 
+        if sum(exvent)==0:
+            vals.append({
+                'analisys_id':self.id,
+                'tax_id':False,
+                'venta_net':sum(exvent),
+                'venta_tax':0,
+                'compra_net':sum(excomp),
+                'compra_tax':0,
+            })
+
+        if sum(excomp)==0:
+            vals1.append({
+                'analisys_id1':self.id,
+                'tax_id':False,
+                'venta_net':sum(exvent),
+                'venta_tax':0,
+                'compra_net':sum(excomp),
+                'compra_tax':0,
+            }) 
 
         
         
-        vals2=[]        
-        for x in vals:
-            if x not in vals2:
-                vals2.append(x)
-
+       
         for i in vals:
             self.taxes_ids=[(0,0,i)]
+            
+        for j in vals1:
+            self.taxes_ids1=[(0,0,j)]
+        compras=[]
+        for t in self.taxes_ids:
+            compras.append(t.compra_tax)
+        ventas=[]
+        for g in self.taxes_ids1:
+            ventas.append(g.venta_tax)
+
+        if not compras:
+            compras=[0]
+        if not ventas:
+            ventas=[0]
+        self.dif=sum(compras)-sum(ventas)
         self.export_stock_ledger()
 
     def get_resultado(self):
@@ -231,6 +270,7 @@ class AnalisysReport(models.Model):
         excenta=[]
         imput=[]
         vgravada=[]
+        deta_impu={}
         for line in obj1:
             
             
@@ -269,6 +309,8 @@ class AnalisysReport(models.Model):
                                     impu[head]+=inv.price_subtotal*inv.tax_ids.amount/100
                     else:
                         excenta.append(inv.price_subtotal)
+                        if "Sin impuesto" not in impu:
+                            impu.update({"Sin impuesto":0})
 
             for x in impu.values():
                 if x:
@@ -278,15 +320,29 @@ class AnalisysReport(models.Model):
                     
                 _logger.info('impuuuu'+str(impu))
             for heade in tags:
-                        _logger.info('headdd'+str(heade))
-                        if heade in impu:
-                            worksheet[work].write(r, tags.index(heade)+1,impu.get(heade),  text_right)
-                        elif heade =="Sin impuesto":
-                            worksheet[work].write(r, tags.index(heade)+1,0,  text_right)
+                _logger.info('headdd'+str(heade))
+                if heade in impu:
+                    worksheet[work].write(r, tags.index(heade)+1,impu.get(heade),  text_right)
+
+            for i in impu:
+                if i not in deta_impu:
+                    deta_impu[i]=impu[i]
+                else:
+                    deta_impu[i]+=impu[i]            
             
             
             worksheet[work].write(r, len(tags),line.amount_total,  text_right)
             r+=1
+        r+=1
+      
+        worksheet[work].write(r, 3, "Totales", text_left)
+        worksheet[work].write(r, 4, sum(obj1.mapped("amount_untaxed_signed")), text_left)
+        for heade1 in tags:
+                _logger.info('headdd'+str(heade))
+                if heade1 in deta_impu:
+                    worksheet[work].write(r, tags.index(heade1)+1,deta_impu.get(heade1),  text_right)
+        
+        worksheet[work].write(r, len(tags),sum(obj1.mapped("amount_total")),  text_right)
 
         worksheet[work].write_merge(r+2, r+2, 0, 9, 'COMPRAS', header_style)
 
@@ -299,6 +355,7 @@ class AnalisysReport(models.Model):
         cexcenta=[]
         cimput=[]
         cgravada=[]
+        deta_impu1={}
         for line in obj:
             
             
@@ -331,25 +388,46 @@ class AnalisysReport(models.Model):
                         cgravada.append(inv.price_subtotal)
                         for head in tags1:
                             if inv.tax_ids.name==head:
-                                if head not in impu1:
+                                if head not in impu1 and inv.tax_ids and head:
                                         impu1.update({head:inv.price_subtotal*inv.tax_ids.amount/100})
-                                else:
+                                elif  head in impu1 and inv.tax_ids and head:
                                     impu1[head]+=inv.price_subtotal*inv.tax_ids.amount/100
+                            
+                                
+
+                            
                     else:
                         cexcenta.append(inv.price_subtotal)
-                    
-                for heade in tags1:
-                            if heade in impu1:
-                                worksheet[work].write(r, tags1.index(heade)+1,impu1.get(heade),  text_right)
-                            elif heade =="Sin impuesto":
-                                worksheet[work].write(r, tags1.index(heade)+1,0,  text_right)
+                        if "Sin impuesto" not in impu1:
+                            impu1.update({"Sin impuesto":0})
 
-                worksheet[work].write(r, len(tags1),line.amount_total,  text_right)
-                r+=1
-                for x in impu1.values():
-                            if x:
-                                cimput.append(x)
+            for heade in tags1:
+                if heade in impu1:
+                    worksheet[work].write(r, tags1.index(heade)+1,impu1.get(heade),  text_right)
+                        
+            worksheet[work].write(r, len(tags1),line.amount_total,  text_right)
+            
+            for x in impu1.values():
+                        if x:
+                            cimput.append(x)
+            for i in impu1:
+                if i not in deta_impu1:
+                    deta_impu1[i]=impu1[i]
+                else:
+                    deta_impu1[i]+=impu1[i]
+
+            r+=1 
+            _logger.info('impuuuu11'+str(impu1))
+        r+=1
+      
+        worksheet[work].write(r, 3, "Totales", text_left)
+        worksheet[work].write(r, 4, sum(obj.mapped("amount_untaxed_signed")), text_left)
+        for heade2 in tags1:
+            _logger.info('headdd'+str(heade))
+            if heade2 in deta_impu1:
+                worksheet[work].write(r, tags1.index(heade2)+1,deta_impu1.get(heade2),  text_right)
         
+        worksheet[work].write(r, len(tags1),sum(obj.mapped("amount_total")),  text_right) 
         r+=3
         worksheet[work].write_merge(r+2, r+2, 0, 9, 'TOTALES', header_style)
         worksheet[work].write(r+3, 1,"Ventas Gravadas",  text_right)
@@ -382,6 +460,16 @@ class AnalisysReport(models.Model):
             {'excel_file': base64.encodestring(fp.getvalue()), 'file_name': filename})
         fp.close()
 
+class TaxesLine1(models.Model):
+    _name="taxes.line1"
+
+    analisys_id1=fields.Many2one("analisys.report")
+    tax_id=fields.Many2one("account.tax",string="Impuesto")
+    venta_net=fields.Float(string="Venta neto")
+    venta_tax=fields.Float(string="Venta Impuesto")
+    compra_net=fields.Float(string="Compra neto")
+    compra_tax=fields.Float(string="Compra Impuesto")
+    dif=fields.Float(string="Dif impuesto",compute="get_dif")
         
 
 class TaxesLine(models.Model):
