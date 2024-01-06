@@ -202,7 +202,7 @@ class AnalisysReport(models.Model):
             worksheet[work].col(i).width = 140 * 30
 
         worksheet[work].write_merge(0, 1, 0, 9, 'REPORTE IMPUESTOS', main_header_style)
-        worksheet[work].write_merge(2, 3, 0, 9, 'DICKSON', main_header_style)
+        worksheet[work].write_merge(2, 3, 0, 9, self.env.user.company_id.name, main_header_style)
       
         worksheet[work].write(5, 2, 'Fecha Inicio', header_style)
         worksheet[work].write(5, 4, 'Fecha Fin', header_style)
@@ -228,8 +228,8 @@ class AnalisysReport(models.Model):
             #("tax_line_id","=",False),
             #("price_total", ">",0)
         ])
-        tags=["Fecha","Cliente","Factura","Ventas Gravadas"]
-        tags1=["Fecha","Cliente","Factura","Compras Gravadas"]
+        tags=["Fecha","Cliente","Factura","Ventas Gravadas","Descuento"]
+        tags1=["Fecha","Cliente","Factura","Compras Gravadas","Descuento"]
         venta_imp_tax=obj1.mapped("invoice_line_ids.tax_ids.name")
         compras_imp_tax=obj.mapped("invoice_line_ids.tax_ids.name")
         imp_ventas=[]
@@ -271,6 +271,7 @@ class AnalisysReport(models.Model):
         imput=[]
         vgravada=[]
         deta_impu={}
+        desct2=[]
         for line in obj1:
             
             
@@ -284,7 +285,12 @@ class AnalisysReport(models.Model):
             c += 1
             worksheet[work].write(r,c,line.amount_untaxed, text_left)
             impu={}
+            desc=[]
             for inv in line.invoice_line_ids:
+                if inv.discount:
+                   
+                    desc.append(inv.quantity*inv.price_unit*inv.discount)
+                    desct2.append(inv.quantity*inv.price_unit*inv.discount)
                 if not inv.tax_line_id:
                     if len(inv.tax_ids)>1:
                         for tax in inv.tax_ids:
@@ -311,6 +317,8 @@ class AnalisysReport(models.Model):
                         excenta.append(inv.price_subtotal)
                         if "Sin impuesto" not in impu:
                             impu.update({"Sin impuesto":0})
+                
+
 
             for x in impu.values():
                 if x:
@@ -323,6 +331,11 @@ class AnalisysReport(models.Model):
                 _logger.info('headdd'+str(heade))
                 if heade in impu:
                     worksheet[work].write(r, tags.index(heade)+1,impu.get(heade),  text_right)
+                else:
+                    if heade=="Descuento":
+                        worksheet[work].write(r, tags.index(heade)+1,sum(desc),  text_right)
+
+
 
             for i in impu:
                 if i not in deta_impu:
@@ -356,6 +369,7 @@ class AnalisysReport(models.Model):
         cimput=[]
         cgravada=[]
         deta_impu1={}
+        desct1=[]
         for line in obj:
             
             
@@ -369,7 +383,11 @@ class AnalisysReport(models.Model):
             c += 1
             worksheet[work].write(r,c,line.amount_untaxed, text_left)
             impu1={}
+            desc1=[]
             for inv in line.invoice_line_ids:
+                if inv.discount:
+                    desc1.append(inv.quantity*inv.price_unit*inv.discount)
+                    desct1.append(inv.quantity*inv.price_unit*inv.discount)
                 if not inv.tax_line_id:
                     if len(inv.tax_ids)>1:
                         for tax in inv.tax_ids:
@@ -404,6 +422,9 @@ class AnalisysReport(models.Model):
             for heade in tags1:
                 if heade in impu1:
                     worksheet[work].write(r, tags1.index(heade)+1,impu1.get(heade),  text_right)
+                else:
+                    if heade=="Descuento":
+                        worksheet[work].write(r, tags1.index(heade)+1,sum(desc1),  text_right)
                         
             worksheet[work].write(r, len(tags1),line.amount_total,  text_right)
             
@@ -434,20 +455,24 @@ class AnalisysReport(models.Model):
         worksheet[work].write(r+3, 2,sum(vgravada),  text_right)
         worksheet[work].write(r+4, 1,"Impo sobre ventas",  text_right)
         worksheet[work].write(r+4, 3,sum(imput),  text_right)
-        worksheet[work].write(r+5, 1,"Ventas Excentas",  text_right)
-        worksheet[work].write(r+5, 2,sum(excenta),  text_right)
-        worksheet[work].write(r+6, 1,"Total de ventas",  text_right)
-        worksheet[work].write(r+6, 2,sum(excenta)+sum(vgravada),  text_right)
+        worksheet[work].write(r+5, 1,"Descuento",  text_right)
+        worksheet[work].write(r+5, 2,sum(desct2),  text_right)
+        worksheet[work].write(r+6, 1,"Ventas Excentas",  text_right)
+        worksheet[work].write(r+6, 2,sum(excenta),  text_right)
+        worksheet[work].write(r+7, 1,"Total de ventas",  text_right)
+        worksheet[work].write(r+7, 2,sum(excenta)+sum(vgravada),  text_right)
         
         worksheet[work].write(r+8, 1,"Compras Gravadas",  text_right)
         worksheet[work].write(r+8, 2,sum(cgravada),  text_right)
         worksheet[work].write(r+9, 1,"Impo sobre compras",  text_right)
         worksheet[work].write(r+9, 3,sum(cimput),  text_right)
-        worksheet[work].write(r+10, 1,"Compras excentas",  text_right)
-        worksheet[work].write(r+10, 2,sum(cexcenta),  text_right)
-        worksheet[work].write(r+11, 1,"Total de compras",  text_right)
-        worksheet[work].write(r+11, 2,sum(cexcenta)+sum(cgravada),  text_right)
-        r+=12
+        worksheet[work].write(r+10, 1,"Descuento",text_right)
+        worksheet[work].write(r+10, 2,sum(desct1),  text_right)
+        worksheet[work].write(r+11, 1,"Compras excentas",  text_right)
+        worksheet[work].write(r+11, 2,sum(cexcenta),  text_right)
+        worksheet[work].write(r+12, 1,"Total de compras",  text_right)
+        worksheet[work].write(r+12, 2,sum(cexcenta)+sum(cgravada),  text_right)
+        r+=13
         worksheet[work].write(r+13, 1,"Saldo del fisco",  text_right)
         worksheet[work].write(r+13, 2,sum(imput)-sum(cimput),  text_right)
 
